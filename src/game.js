@@ -2,8 +2,8 @@ import * as THREE from 'three';
 import { Chess } from 'chess-legacy';
 const $=id=>document.getElementById(id),F='abcdefgh';
 const NM={w:{k:'Naruto',q:'Hinata',b:'Minato',n:'Kurama',r:'Jiraiya',p:'Leaf shinobi'},b:{k:'Sasuke',q:'Sakura',b:'Kakashi',n:'Orochimaru',r:'Pain',p:'Rogue shinobi'}};
-const FX={w:{k:{n:'Rasengan',c:0x39b8ff,s:'orb',z:.3},q:{n:'Gentle Fist',c:0x9db8ff,s:'ring'},b:{n:'Flying Raijin',c:0xffe45c,s:'bolt'},n:{n:'Tailed Beast Bomb',c:0xff4a1a,s:'orb',z:.6},r:{n:'Toad Rasengan',c:0x6ad06a,s:'orb',z:.4},p:{n:'Kunai Barrage',c:0xdddddd,s:'orb',z:.12}},
-b:{k:{n:'Chidori',c:0x9fd0ff,s:'bolt'},q:{n:'Cherry Blossom Impact',c:0xff7fb0,s:'ring'},b:{n:'Lightning Blade',c:0x7fe8ff,s:'bolt'},n:{n:'Striking Snakes',c:0x8be04a,s:'bolt'},r:{n:'Shinra Tensei',c:0xb98cff,s:'ring'},p:{n:'Shuriken Volley',c:0xbbbbbb,s:'orb',z:.12}}};
+const FX={w:{k:{n:'Rasengan',c:0x39b8ff,s:'orb',z:.3},q:{n:'Gentle Fist',c:0x9db8ff,s:'ring'},b:{n:'Flying Raijin',c:0xffe45c,s:'bolt'},n:{n:'Tailed Beast Bomb',c:0xff4a1a,s:'orb',z:.6,fire:1},r:{n:'Toad Rasengan',c:0x6ad06a,s:'orb',z:.4},p:{n:'Kunai Barrage',c:0xdddddd,s:'orb',z:.12}},
+b:{k:{n:'Great Fireball',c:0xff6a1a,s:'fire'},q:{n:'Cherry Blossom Impact',c:0xff7fb0,s:'ring'},b:{n:'Lightning Blade',c:0x7fe8ff,s:'bolt'},n:{n:'Striking Snakes',c:0x8be04a,s:'snake'},r:{n:'Shinra Tensei',c:0xb98cff,s:'ring',sh:1},p:{n:'Shuriken Volley',c:0xbbbbbb,s:'orb',z:.12}}};
 const KN={k:'King',q:'Queen',b:'Bishop',n:'Knight',r:'Rook',p:'Pawn'};
 $('gal').innerHTML=['w','b'].flatMap(c=>'kqbnrp'.split('').map(t=>`<tr><td>${c==='w'?'White':'Black'} ${KN[t]}</td><td>${NM[c][t]}</td><td>${FX[c][t].n}</td></tr>`)).join('');
 const S={mode:'ai',human:'w',diff:2,cin:2,sound:true,sel:null,busy:false,skip:false,over:false,top:false};
@@ -83,11 +83,27 @@ const face=(o,v)=>{o.rotation.y=Math.atan2(v.x-o.position.x,v.z-o.position.z)};
 const mid=o=>o.position.clone().setY(.8);
 let bt;function banner(t){const b=$('bn');b.textContent=t;b.classList.add('on');clearTimeout(bt);bt=setTimeout(()=>b.classList.remove('on'),S.skip?0:900)}
 function flash(o,c,on){o.traverse(m=>{if(m.material&&m.material.emissive&&m.material.color){m.material.emissive.setHex(on?c:0);m.material.emissiveIntensity=on?.9:0}})}
+const zero=new THREE.Vector3(),FL=new THREE.PointLight(0xff8a2a,0,7);scene.add(FL);
+const ftex=(()=>{const c=document.createElement('canvas');c.width=c.height=64;const x=c.getContext('2d'),g=x.createRadialGradient(32,32,0,32,32,32);g.addColorStop(0,'rgba(255,255,255,1)');g.addColorStop(.35,'rgba(255,255,255,.55)');g.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=g;x.fillRect(0,0,64,64);return new THREE.CanvasTexture(c)})();
+const spr=[];for(let i=0;i<600;i++){const m=new THREE.Sprite(new THREE.SpriteMaterial({map:ftex,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));m.visible=false;m.userData={v:new THREE.Vector3(),l:0,d:1,z:.3,k:'f'};scene.add(m);spr.push(m)}
+let sc_=0;function flame(p,v,z,d,k='f',col=0xffffff){const m=spr[sc_++%spr.length],u=m.userData;m.visible=true;m.position.copy(p);u.v.copy(v);u.l=1;u.d=d;u.z=z;u.k=k;if(k==='g')m.material.color.setHex(col)}
+const rnd=()=>Math.random()-.5;
+function fireAt(p,n,sp,z){for(let i=0;i<n;i++)flame(new THREE.Vector3(p.x+rnd()*sp,p.y+rnd()*sp*.6,p.z+rnd()*sp),new THREE.Vector3(rnd()*.8,.8+Math.random()*1.4,rnd()*.8),z*(.6+Math.random()*.8),.45+Math.random()*.5)}
+function light(p,c,i){FL.position.copy(p);FL.color.setHex(c);FL.intensity=i}
 async function effect(a,v,fx){const A=mid(a),V=mid(v),col=new THREE.MeshBasicMaterial({color:fx.c,transparent:true,opacity:.9});tone(200,.5,'triangle',.06,900);
-if(fx.s==='orb'){const o=new THREE.Mesh(new THREE.SphereGeometry(1,16,12),col);o.position.copy(A);scene.add(o);await tw(.45,t=>o.scale.setScalar(.05+t*fx.z));await tw(.25,t=>o.position.lerpVectors(A,V,t));scene.remove(o)}
-else if(fx.s==='bolt'){const o=new THREE.Mesh(new THREE.CylinderGeometry(.04,.04,1,6),col);const L=A.distanceTo(V);o.position.copy(A).lerp(V,.5);o.scale.y=L;o.lookAt(V);o.rotateX(Math.PI/2);scene.add(o);await tw(.45,t=>{o.scale.x=o.scale.z=.5+Math.random()*3;o.visible=Math.random()>.2;if(t>.2)burst(V,fx.c,2,2)});scene.remove(o)}
-else{const o=new THREE.Mesh(new THREE.TorusGeometry(.4,.06,8,32),col);o.rotation.x=Math.PI/2;o.position.copy(A).setY(.3);scene.add(o);await tw(.55,t=>{o.position.lerpVectors(A,V,t).setY(.3+t*.3);o.scale.setScalar(.5+t*1.4)});scene.remove(o)}}
-async function hit(v,c,n){burst(mid(v),c,n,4);shk=n>30?.5:.25;tone(120,.25,'sawtooth',.12,40);flash(v,c,true);const p=v.position.clone();await tw(.2,t=>{v.position.x=p.x+Math.sin(t*30)*.05});flash(v,0,false);v.position.copy(p)}
+if(fx.s==='fire'){tone(90,1,'sawtooth',.05,40);await tw(.55,t=>{fireAt(A,1+Math.floor(t*5),.1+t*.2,.2+t*.35);light(A,0xff6a1a,t*2.5)});
+await tw(.45,t=>{const p=A.clone().lerp(V,t);fireAt(p,8,.3,.6);fireAt(p,2,.15,.95);light(p,0xff6a1a,2+Math.random())});light(V,0xff6a1a,0)}
+else if(fx.s==='orb'){const o=new THREE.Group();o.add(new THREE.Mesh(new THREE.SphereGeometry(1,16,12),col));for(let i=0;i<2;i++){const r=new THREE.Mesh(new THREE.TorusGeometry(1.3,.08,6,20),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.8}));r.rotation.set(i*1.3,i*.8,0);o.add(r)}o.position.copy(A);scene.add(o);
+const spin=()=>{o.children.forEach((c,i)=>{if(i){c.rotation.z+=.4;c.rotation.x+=.2}});flame(o.position,zero,fx.z*5,.1,'g',fx.c);if(fx.fire)fireAt(o.position,5,fx.z,fx.z*2.5)};
+await tw(.45,t=>{o.scale.setScalar(.05+t*fx.z);spin();light(o.position,fx.c,t*2)});await tw(.25,t=>{o.position.lerpVectors(A,V,t);spin();light(o.position,fx.c,2)});scene.remove(o);light(V,fx.c,0)}
+else if(fx.s==='bolt'){const ls=[0,1,2].map(()=>{const l=new THREE.Line(new THREE.BufferGeometry().setFromPoints(Array.from({length:14},()=>new THREE.Vector3())),new THREE.LineBasicMaterial({color:fx.c}));l.frustumCulled=false;scene.add(l);return l});
+await tw(.55,t=>{ls.forEach(l=>{const pa=l.geometry.attributes.position;for(let i=0;i<14;i++){const f=i/13,j=i&&i<13?.4:0;pa.setXYZ(i,A.x+(V.x-A.x)*f+rnd()*j,A.y+(V.y-A.y)*f+rnd()*j,A.z+(V.z-A.z)*f+rnd()*j)}pa.needsUpdate=true;l.visible=Math.random()>.15});for(let i=0;i<5;i++)flame(A.clone().lerp(V,i/4),zero,.5+Math.random()*.4,.08,'g',fx.c);light(V,fx.c,2+Math.random()*3)});ls.forEach(l=>scene.remove(l));light(V,fx.c,0)}
+else if(fx.s==='snake'){const N=14,ch=[0,1,2].map(()=>Array.from({length:N},(_,i)=>{const m=new THREE.Mesh(new THREE.SphereGeometry(i?.08:.13,8,6),new THREE.MeshBasicMaterial({color:i?0x6fa03a:0xb8e050}));scene.add(m);return m}));
+await tw(.75,t=>{ch.forEach((c,j)=>c.forEach((m,i)=>{const f=Math.max(0,Math.min(1,t*1.4-i*.03)),p=A.clone().lerp(V,f);p.y+=Math.sin(f*8+t*10+j*2)*.25;p.x+=Math.cos(f*6+j*2)*.15*(1-f*.5);m.position.copy(p);m.visible=f>0}))});ch.flat().forEach(m=>scene.remove(m))}
+else{const o=new THREE.Mesh(new THREE.TorusGeometry(.4,.06,8,32),col);o.rotation.x=Math.PI/2;scene.add(o);let sh=null;if(fx.sh){sh=new THREE.Mesh(new THREE.SphereGeometry(1,24,16),new THREE.MeshBasicMaterial({color:fx.c,transparent:true,opacity:.3,side:2,depthWrite:false,blending:THREE.AdditiveBlending}));sh.position.copy(A);scene.add(sh)}
+await tw(.6,t=>{o.position.lerpVectors(A,V,t).setY(.3+t*.3);o.scale.setScalar(.5+t*1.4);if(sh){sh.scale.setScalar(.3+t*3);sh.material.opacity=(1-t)*.35;shk=.2}flame(o.position,zero,1.2,.1,'g',fx.c)});scene.remove(o);if(sh)scene.remove(sh)}}
+async function hit(v,c,n,fx){const M=mid(v);if(fx&&fx.s==='fire'){for(let i=0;i<60;i++)flame(new THREE.Vector3(M.x+rnd()*.5,M.y+rnd()*.5,M.z+rnd()*.5),new THREE.Vector3(rnd()*3,1+Math.random()*3,rnd()*3),1.1*(.5+Math.random()),.6+Math.random()*.6);light(M,0xff6a1a,4)}else burst(M,c,n,4);if(fx&&fx.s==='bolt')for(let i=0;i<8;i++)flame(M,new THREE.Vector3(rnd()*4,rnd()*4,rnd()*4),.5,.2,'g',c);
+shk=n>30?.5:.25;tone(120,.25,'sawtooth',.12,40);flash(v,c,true);const p=v.position.clone();await tw(.2,t=>{v.position.x=p.x+Math.sin(t*30)*.05});flash(v,0,false);v.position.copy(p);light(M,c,0)}
 async function counter(v,a){const p=v.position.clone(),q=a.position.clone(),d=a.position.clone().sub(p).normalize();tone(300,.15,'square',.05,150);await tw(.4,t=>{const k=Math.sin(t*Math.PI);v.position.copy(p).addScaledVector(d,k*.5);a.position.copy(q).add(new THREE.Vector3(-d.z,0,d.x).multiplyScalar(k*.25))});burst(mid(v),0xffffff,8,2);v.position.copy(p);a.position.copy(q)}
 async function animate(m){const a=pcs[m.from],to=P(m.to),cap=m.captured||m.flags.includes('e'),vs=m.flags.includes('e')?m.to[0]+m.from[1]:m.to,v=cap&&pcs[vs];a.userData.sq=null;tone(300,.06,'square',.04);
 let rk=null;if(m.flags.includes('k')||m.flags.includes('q')){const r=m.color==='w'?1:8,ks=m.flags.includes('k');rk=hop(pcs[(ks?'h':'a')+r],P((ks?'f':'d')+r),.5,.3)}
@@ -95,10 +111,10 @@ if(v&&S.cin>0){const fx=FX[m.color][m.piece],rounds=S.cin===2?3:1,dir=v.position
 Object.assign(des,{tx:(stand.x+v.position.x)/2,tz:(stand.z+v.position.z)/2,ty:.7,r:5,ph:1.2,th:Math.atan2(-dir.z,dir.x)+Math.PI/2*(m.color==='w'?-1:1)});
 if(fx.n==='Flying Raijin'){burst(mid(a),fx.c,25,4);a.position.copy(stand);burst(mid(a),fx.c,25,4)}else await hop(a,stand,.6,.5);
 face(a,v.position);face(v,a.position);banner(fx.n+'!');await tw(.4,()=>{});
-for(let i=0;i<rounds;i++){const last=i===rounds-1;await effect(a,v,fx);await hit(v,fx.c,last?45:18);if(!last)await counter(v,a)}
+for(let i=0;i<rounds;i++){const last=i===rounds-1;await effect(a,v,fx);await hit(v,fx.c,last?45:18,fx);if(!last)await counter(v,a)}
 v.traverse(o=>{if(o.material){o.material.transparent=true}});
-await tw(.9,t=>{v.rotation.x=-t*1.45;v.position.y=-t*.1;v.traverse(o=>{if(o.material&&o.material.opacity!==undefined&&!o.material.isMeshBasicMaterial)o.material.opacity=1-Math.max(0,t-.4)/.6});if(Math.random()<.5)burst(mid(v),fx.c,2,1.5,2.5)});
-v.visible=false;tone(500,.5,'triangle',.06,1200);
+await tw(.9,t=>{v.rotation.x=-t*1.45;v.position.y=-t*.1;v.traverse(o=>{if(o.material&&o.material.opacity!==undefined&&!o.material.isMeshBasicMaterial)o.material.opacity=1-Math.max(0,t-.4)/.6});if(fx.s==='fire')fireAt(mid(v),3,.3,.55);else if(Math.random()<.5)burst(mid(v),fx.c,2,1.5,2.5)});
+v.visible=false;light(zero,0,0);tone(500,.5,'triangle',.06,1200);
 await hop(a,a.position.clone(),.25,.35);await hop(a,a.position.clone(),.25,.35)}
 else if(v){burst(mid(v),FX[m.color][m.piece].c,15,3);tone(120,.2,'sawtooth',.1,40);v.visible=false}
 await hop(a,to,.45,.5);if(rk)await rk;a.userData.sq=m.to}
@@ -125,6 +141,9 @@ let last=performance.now();(function loop(now){requestAnimationFrame(loop);const
 if(!$('menu').hidden)des.th+=dt*.1;
 for(const k in pcs){const p=pcs[k];if(p.userData.sq)p.position.y=Math.sin(now/700+p.userData.ph)*.015}
 for(const m of pts){if(!m.visible)continue;const u=m.userData;u.l-=dt*1.4;if(u.l<=0){m.visible=false;continue}u.v.y-=9*dt*u.g;m.position.addScaledVector(u.v,dt);m.scale.setScalar(u.l);m.material.opacity=u.l}
+for(const m of spr){if(!m.visible)continue;const u=m.userData;u.l-=dt/u.d;if(u.l<=0){m.visible=false;continue}m.position.addScaledVector(u.v,dt);if(u.k==='f'){u.v.y+=2.2*dt;m.material.color.setHSL(.01+.1*u.l,1,.08+.32*u.l);m.scale.setScalar(u.z*(.45+u.l*.9));m.material.opacity=Math.min(.85,u.l*1.4)}else{m.scale.setScalar(u.z);m.material.opacity=u.l*.8}}
 const a=fl.geometry.attributes.position;for(let i=1;i<300;i+=3){a.array[i]+=dt*.3;if(a.array[i]>8)a.array[i]=0}a.needsUpdate=true;
 camUpd();R.render(scene,camera)})(performance.now());
 game=new Chess();sync();hud();$('turn').textContent='Choose a mode to begin';
+
+window.__shinobi={play,S,load:f=>{game.load(f);sync();hud()}};
