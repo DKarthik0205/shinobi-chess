@@ -1,0 +1,4 @@
+services:
+  shinobi-chess:
+    build: .
+    ports: ["8080:80"]
