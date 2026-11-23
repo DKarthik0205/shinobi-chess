@@ -2,8 +2,8 @@ import * as THREE from 'three';
 import { Chess } from 'chess-legacy';
 const $=id=>document.getElementById(id),F='abcdefgh';
 const NM={w:{k:'Naruto',q:'Hinata',b:'Minato',n:'Kurama',r:'Jiraiya',p:'Leaf shinobi'},b:{k:'Sasuke',q:'Sakura',b:'Kakashi',n:'Orochimaru',r:'Pain',p:'Rogue shinobi'}};
-const FX={w:{k:{n:'Rasengan',c:0x39b8ff,s:'orb',z:.3},q:{n:'Gentle Fist',c:0x9db8ff,s:'ring'},b:{n:'Flying Raijin',c:0xffe45c,s:'bolt'},n:{n:'Tailed Beast Bomb',c:0xff4a1a,s:'orb',z:.6,fire:1},r:{n:'Toad Rasengan',c:0x6ad06a,s:'orb',z:.4},p:{n:'Kunai Barrage',c:0xdddddd,s:'orb',z:.12}},
-b:{k:{n:'Great Fireball',c:0xff6a1a,s:'fire'},q:{n:'Cherry Blossom Impact',c:0xff7fb0,s:'ring'},b:{n:'Lightning Blade',c:0x7fe8ff,s:'bolt'},n:{n:'Striking Snakes',c:0x8be04a,s:'snake'},r:{n:'Shinra Tensei',c:0xb98cff,s:'ring',sh:1},p:{n:'Shuriken Volley',c:0xbbbbbb,s:'orb',z:.12}}};
+const FX={w:{k:{n:'Rasengan',c:0x39b8ff,s:'orb',z:.3},q:{n:'Gentle Fist',c:0x9db8ff,s:'palm'},b:{n:'Flying Raijin',c:0xffe45c,s:'bolt'},n:{n:'Chakra Claw Slash',c:0xff3a10,s:'claw'},r:{n:'Toad Rasengan',c:0x6ad06a,s:'orb',z:.4},p:{n:'Kunai Barrage',c:0xdddddd,s:'orb',z:.12}},
+b:{k:{n:'Great Fireball',c:0xff6a1a,s:'fire'},q:{n:'Cherry Blossom Impact',c:0xff7fb0,s:'punch'},b:{n:'Lightning Blade',c:0x7fe8ff,s:'bolt'},n:{n:'Striking Snakes',c:0x8be04a,s:'snake'},r:{n:'Shinra Tensei',c:0xb98cff,s:'ring',sh:1},p:{n:'Shuriken Volley',c:0xbbbbbb,s:'orb',z:.12}}};
 const KN={k:'King',q:'Queen',b:'Bishop',n:'Knight',r:'Rook',p:'Pawn'};
 $('gal').innerHTML=['w','b'].flatMap(c=>'kqbnrp'.split('').map(t=>`<tr><td>${c==='w'?'White':'Black'} ${KN[t]}</td><td>${NM[c][t]}</td><td>${FX[c][t].n}</td></tr>`)).join('');
 const S={mode:'ai',human:'w',diff:2,cin:2,sound:true,sel:null,busy:false,skip:false,over:false,top:false};
@@ -93,6 +93,18 @@ function light(p,c,i){FL.position.copy(p);FL.color.setHex(c);FL.intensity=i}
 async function effect(a,v,fx){const A=mid(a),V=mid(v),col=new THREE.MeshBasicMaterial({color:fx.c,transparent:true,opacity:.9});tone(200,.5,'triangle',.06,900);
 if(fx.s==='fire'){tone(90,1,'sawtooth',.05,40);await tw(.55,t=>{fireAt(A,1+Math.floor(t*5),.1+t*.2,.2+t*.35);light(A,0xff6a1a,t*2.5)});
 await tw(.45,t=>{const p=A.clone().lerp(V,t);fireAt(p,8,.3,.6);fireAt(p,2,.15,.95);light(p,0xff6a1a,2+Math.random())});light(V,0xff6a1a,0)}
+else if(fx.s==='claw'){tone(70,1.1,'sawtooth',.08,35);const cl=new THREE.Group(),cm=new THREE.MeshBasicMaterial({color:0xff3a10,transparent:true,opacity:.75,blending:THREE.AdditiveBlending,depthWrite:false}),pm=new THREE.Mesh(new THREE.SphereGeometry(.35,12,10),cm);pm.scale.set(1.3,.6,1);cl.add(pm);const tips=[];
+for(let i=0;i<4;i++){const c=new THREE.Mesh(new THREE.ConeGeometry(.06,.9,8),cm);c.position.set((i-1.5)*.2,-.55,0);c.rotation.x=Math.PI;cl.add(c);tips.push(new THREE.Vector3((i-1.5)*.22,-1,0))}
+scene.add(cl);const P=s=>[V.clone().add(new THREE.Vector3(-s*.9,1.4,-.5)),V.clone().add(new THREE.Vector3(s*.9,-.1,.5))];
+const swipe=s=>{const[P0,P1]=P(s);return tw(.3,t=>{const e=t*t*(3-2*t);cl.position.lerpVectors(P0,P1,e);cl.rotation.z=s*(.8-e*1.6);cl.updateMatrixWorld(true);tips.forEach(tp=>flame(cl.localToWorld(tp.clone()),zero,.45,.35,'g',0xff4a18));light(cl.position,0xff3a10,2.5)})};
+await tw(.35,t=>{cl.position.copy(P(1)[0]);cl.rotation.z=.8;cl.scale.setScalar(.1+t*1.5);flame(cl.position,zero,.9,.1,'g',0xff3a10)});
+await swipe(1);burst(V,0xff3a10,25,4);shk=.35;tone(160,.2,'sawtooth',.1,60);await swipe(-1);scene.remove(cl);light(V,0,0)}
+else if(fx.s==='punch'){const f=new THREE.Mesh(new THREE.SphereGeometry(.2,12,10),new THREE.MeshBasicMaterial({color:0x222222}));f.position.copy(A);scene.add(f);const d=V.clone().sub(A).normalize();
+await tw(.3,t=>{f.position.copy(A).addScaledVector(d,-.4*t);f.scale.setScalar(1+t*.5);flame(f.position,zero,.5*t,.1,'g',fx.c)});
+await tw(.1,t=>{f.position.copy(A).addScaledVector(d,-.4).lerp(V,t);flame(f.position,zero,.7,.15,'g',0xffffff)});scene.remove(f);
+const r=new THREE.Mesh(new THREE.RingGeometry(.3,.45,32),new THREE.MeshBasicMaterial({color:fx.c,transparent:true,side:2,depthWrite:false}));r.rotation.x=-Math.PI/2;r.position.set(V.x,.05,V.z);scene.add(r);burst(V,0x8a7a6a,40,6);shk=.7;tone(80,.4,'square',.15,30);await tw(.4,t=>{r.scale.setScalar(1+t*4);r.material.opacity=1-t});scene.remove(r)}
+else if(fx.s==='palm'){const mr=r=>{const m=new THREE.Mesh(new THREE.RingGeometry(r*.8,r,8),new THREE.MeshBasicMaterial({color:fx.c,transparent:true,opacity:.8,side:2,depthWrite:false}));m.rotation.x=-Math.PI/2;m.position.set(V.x,.04,V.z);scene.add(m);return m},r1=mr(.9),r2=mr(.55);let pk=-1;
+await tw(.9,t=>{r1.rotation.z=t*5;r2.rotation.z=-t*6;const k=Math.floor(t*10);if(k!==pk){pk=k;const q=V.clone().add(new THREE.Vector3(rnd()*.3,rnd()*.7,rnd()*.3));flame(q,zero,.9,.18,'g',0xffffff);burst(q,fx.c,6,2);tone(500+Math.random()*300,.05,'square',.04)}});scene.remove(r1);scene.remove(r2)}
 else if(fx.s==='orb'){const o=new THREE.Group();o.add(new THREE.Mesh(new THREE.SphereGeometry(1,16,12),col));for(let i=0;i<2;i++){const r=new THREE.Mesh(new THREE.TorusGeometry(1.3,.08,6,20),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.8}));r.rotation.set(i*1.3,i*.8,0);o.add(r)}o.position.copy(A);scene.add(o);
 const spin=()=>{o.children.forEach((c,i)=>{if(i){c.rotation.z+=.4;c.rotation.x+=.2}});flame(o.position,zero,fx.z*5,.1,'g',fx.c);if(fx.fire)fireAt(o.position,5,fx.z,fx.z*2.5)};
 await tw(.45,t=>{o.scale.setScalar(.05+t*fx.z);spin();light(o.position,fx.c,t*2)});await tw(.25,t=>{o.position.lerpVectors(A,V,t);spin();light(o.position,fx.c,2)});scene.remove(o);light(V,fx.c,0)}
